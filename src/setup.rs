@@ -254,6 +254,16 @@ pub struct DiscoveredScope {
     pub classification: ScopeClassification,
 }
 
+/// Compare two scopes for sorting: group by service, then read-only first,
+/// then non-sensitive before restricted, then alphabetically.
+fn compare_scopes(a: &DiscoveredScope, b: &DiscoveredScope) -> std::cmp::Ordering {
+    a.api_name
+        .cmp(&b.api_name)
+        .then_with(|| b.is_readonly.cmp(&a.is_readonly))
+        .then_with(|| a.classification.cmp(&b.classification))
+        .then_with(|| a.short.cmp(&b.short))
+}
+
 /// Fetch scopes from discovery docs for the given enabled API IDs.
 pub async fn fetch_scopes_for_apis(enabled_api_ids: &[String]) -> Vec<DiscoveredScope> {
     let mut all_scopes: Vec<DiscoveredScope> = Vec::new();
@@ -362,13 +372,7 @@ pub async fn fetch_scopes_for_apis(enabled_api_ids: &[String]) -> Vec<Discovered
     // Sort: group by service (api_name), then by access level (read-only first),
     // then by classification (non-sensitive before sensitive before restricted),
     // then alphabetically by short name.
-    all_scopes.sort_by(|a, b| {
-        a.api_name
-            .cmp(&b.api_name)
-            .then_with(|| b.is_readonly.cmp(&a.is_readonly))
-            .then_with(|| a.classification.cmp(&b.classification))
-            .then_with(|| a.short.cmp(&b.short))
-    });
+    all_scopes.sort_by(compare_scopes);
 
     all_scopes
 }
@@ -2345,6 +2349,14 @@ mod tests {
                 classification: ScopeClassification::Restricted,
             },
             DiscoveredScope {
+                url: "https://www.googleapis.com/auth/drive.metadata".to_string(),
+                short: "drive.metadata".to_string(),
+                description: "Drive metadata".to_string(),
+                api_name: "Drive".to_string(),
+                is_readonly: false,
+                classification: ScopeClassification::Sensitive,
+            },
+            DiscoveredScope {
                 url: "https://www.googleapis.com/auth/gmail.readonly".to_string(),
                 short: "gmail.readonly".to_string(),
                 description: "Read-only Gmail".to_string(),
@@ -2354,19 +2366,17 @@ mod tests {
             },
         ];
 
-        scopes.sort_by(|a, b| {
-            a.api_name
-                .cmp(&b.api_name)
-                .then_with(|| b.is_readonly.cmp(&a.is_readonly))
-                .then_with(|| a.classification.cmp(&b.classification))
-                .then_with(|| a.short.cmp(&b.short))
-        });
+        scopes.sort_by(compare_scopes);
 
-        // Drive scopes first (alphabetically before Gmail)
+        // Drive scopes first (alphabetically before Gmail), read-only before write
         assert_eq!(scopes[0].short, "drive.readonly");
-        assert_eq!(scopes[1].short, "drive");
+        // Within Drive write scopes: Sensitive before Restricted
+        assert_eq!(scopes[1].short, "drive.metadata");
+        assert_eq!(scopes[1].classification, ScopeClassification::Sensitive);
+        assert_eq!(scopes[2].short, "drive");
+        assert_eq!(scopes[2].classification, ScopeClassification::Restricted);
         // Gmail scopes second
-        assert_eq!(scopes[2].short, "gmail.readonly");
-        assert_eq!(scopes[3].short, "gmail");
+        assert_eq!(scopes[3].short, "gmail.readonly");
+        assert_eq!(scopes[4].short, "gmail");
     }
 }
