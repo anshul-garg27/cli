@@ -359,10 +359,14 @@ pub async fn fetch_scopes_for_apis(enabled_api_ids: &[String]) -> Vec<Discovered
         }
     }
 
-    // Sort: restricted first, then sensitive, then non-sensitive, then alphabetically
+    // Sort: group by service (api_name), then by access level (read-only first),
+    // then by classification (non-sensitive before sensitive before restricted),
+    // then alphabetically by short name.
     all_scopes.sort_by(|a, b| {
-        b.classification
-            .cmp(&a.classification)
+        a.api_name
+            .cmp(&b.api_name)
+            .then_with(|| b.is_readonly.cmp(&a.is_readonly))
+            .then_with(|| a.classification.cmp(&b.classification))
             .then_with(|| a.short.cmp(&b.short))
     });
 
@@ -2311,5 +2315,58 @@ mod tests {
         } else {
             assert_eq!(bin, "gcloud");
         }
+    }
+
+    #[test]
+    fn scope_sort_groups_by_service_then_access_then_classification() {
+        let mut scopes = vec![
+            DiscoveredScope {
+                url: "https://www.googleapis.com/auth/gmail".to_string(),
+                short: "gmail".to_string(),
+                description: "Full Gmail access".to_string(),
+                api_name: "Gmail".to_string(),
+                is_readonly: false,
+                classification: ScopeClassification::Restricted,
+            },
+            DiscoveredScope {
+                url: "https://www.googleapis.com/auth/drive.readonly".to_string(),
+                short: "drive.readonly".to_string(),
+                description: "Read-only Drive".to_string(),
+                api_name: "Drive".to_string(),
+                is_readonly: true,
+                classification: ScopeClassification::NonSensitive,
+            },
+            DiscoveredScope {
+                url: "https://www.googleapis.com/auth/drive".to_string(),
+                short: "drive".to_string(),
+                description: "Full Drive access".to_string(),
+                api_name: "Drive".to_string(),
+                is_readonly: false,
+                classification: ScopeClassification::Restricted,
+            },
+            DiscoveredScope {
+                url: "https://www.googleapis.com/auth/gmail.readonly".to_string(),
+                short: "gmail.readonly".to_string(),
+                description: "Read-only Gmail".to_string(),
+                api_name: "Gmail".to_string(),
+                is_readonly: true,
+                classification: ScopeClassification::NonSensitive,
+            },
+        ];
+
+        scopes.sort_by(|a, b| {
+            a.api_name
+                .cmp(&b.api_name)
+                .then_with(|| b.is_readonly.cmp(&a.is_readonly))
+                .then_with(|| a.classification.cmp(&b.classification))
+                .then_with(|| a.short.cmp(&b.short))
+        });
+
+        // Drive scopes first (alphabetically before Gmail)
+        assert_eq!(scopes[0].short, "drive.readonly");
+        assert_eq!(scopes[1].short, "drive");
+        // Gmail scopes second
+        assert_eq!(scopes[2].short, "gmail.readonly");
+        assert_eq!(scopes[3].short, "gmail");
     }
 }
