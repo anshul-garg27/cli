@@ -561,6 +561,14 @@ fn build_url(
             }
         }
 
+        if !is_repeated && value.is_array() {
+            eprintln!(
+                "Warning: parameter '{}' is not marked as repeated; array value will be stringified. \
+                 Use `gws schema` to check which parameters accept arrays.",
+                key
+            );
+        }
+
         let val_str = match value {
             Value::String(s) => s.clone(),
             other => other.to_string(),
