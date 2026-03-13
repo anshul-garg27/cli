@@ -227,7 +227,7 @@ fn all_api_ids() -> Vec<&'static str> {
     WORKSPACE_APIS.iter().map(|a| a.id).collect()
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ScopeClassification {
     NonSensitive,
     Sensitive,
