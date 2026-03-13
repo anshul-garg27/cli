@@ -746,7 +746,7 @@ mod tests {
     #[test]
     fn test_local_today_boundaries() {
         // Verify that the shared helper produces boundaries that
-        // contain "now" and span exactly 24 hours.
+        // contain "now" and span ~24 hours.
         let local_now = chrono::Local::now();
         let (start, end) = local_today_boundaries();
 
@@ -754,9 +754,13 @@ mod tests {
         assert!(local_now >= start);
         assert!(local_now < end);
 
-        // The span must be exactly 24 hours (86400 seconds)
+        // The span is 24h (86400s) on most days, but 23h or 25h on DST
+        // transition days. Accept a range to avoid flaky tests.
         let span = end.signed_duration_since(start).num_seconds();
-        assert_eq!(span, 86400);
+        assert!(
+            (82800..=90000).contains(&span),
+            "span {span}s is outside the expected 23h–25h range"
+        );
 
         // The RFC 3339 output must include the local offset
         let rfc = start.to_rfc3339();
