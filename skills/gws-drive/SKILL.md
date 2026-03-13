@@ -18,6 +18,21 @@ metadata:
 gws drive <resource> <method> [flags]
 ```
 
+## Shared Drives
+
+> **Important:** When working with files in **Shared Drives** (formerly Team Drives), you must include `"supportsAllDrives": true` in your `--params`. Without it, files in Shared Drives will return 404 Not Found even if they exist.
+
+```bash
+# List files in a Shared Drive
+gws drive files list --params '{"driveId": "DRIVE_ID", "corpora": "drive", "includeItemsFromAllDrives": true, "supportsAllDrives": true}'
+
+# Get a file from a Shared Drive
+gws drive files get --params '{"fileId": "FILE_ID", "supportsAllDrives": true}'
+
+# Move/copy files to a Shared Drive
+gws drive files update --params '{"fileId": "FILE_ID", "addParents": "FOLDER_ID", "supportsAllDrives": true}'
+```
+
 ## Helper Commands
 
 | Command | Description |
