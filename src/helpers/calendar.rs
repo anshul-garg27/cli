@@ -208,9 +208,12 @@ async fn handle_agenda(matches: &ArgMatches) -> Result<(), GwsError> {
     let today_start = local_now
         .date_naive()
         .and_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap());
+    // Use .earliest() to handle DST transitions where midnight may be
+    // ambiguous or non-existent. Falls back to current time if resolution
+    // fails entirely (should not happen for midnight in practice).
     let today_start_local = Local
         .from_local_datetime(&today_start)
-        .single()
+        .earliest()
         .unwrap_or(local_now);
 
     let days: i64 = if matches.get_flag("tomorrow") {
@@ -554,8 +557,8 @@ mod tests {
             .and_time(NaiveTime::from_hms_opt(0, 0, 0).unwrap());
         let today_start_local = Local
             .from_local_datetime(&today_start)
-            .single()
-            .unwrap_or(local_now);
+            .earliest()
+            .unwrap_or(local_now.into());
 
         let today_rfc = today_start_local.to_rfc3339();
         let tomorrow_start = today_start_local + chrono::Duration::days(1);
