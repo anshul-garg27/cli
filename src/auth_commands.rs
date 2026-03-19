@@ -76,6 +76,8 @@ pub const FULL_SCOPES: &[&str] = &[
     "https://www.googleapis.com/auth/documents",
     "https://www.googleapis.com/auth/presentations",
     "https://www.googleapis.com/auth/tasks",
+    "https://www.googleapis.com/auth/contacts",
+    "https://www.googleapis.com/auth/meetings.space.created",
     "https://www.googleapis.com/auth/pubsub",
     "https://www.googleapis.com/auth/cloud-platform",
 ];
@@ -571,6 +573,7 @@ fn map_service_to_scope_prefixes(service: &str) -> Vec<&str> {
         "slides" => vec!["presentations"],
         "docs" => vec!["documents"],
         "people" => vec!["contacts", "directory"],
+        "meet" => vec!["meetings"],
         s => vec![s],
     }
 }
@@ -1293,6 +1296,14 @@ const SCOPE_ENTRIES: &[ScopeEntry] = &[
         label: "Google Tasks",
     },
     ScopeEntry {
+        scope: "https://www.googleapis.com/auth/contacts",
+        label: "Google Contacts (People API)",
+    },
+    ScopeEntry {
+        scope: "https://www.googleapis.com/auth/meetings.space.created",
+        label: "Google Meet",
+    },
+    ScopeEntry {
         scope: "https://www.googleapis.com/auth/pubsub",
         label: "Cloud Pub/Sub",
     },
@@ -1961,6 +1972,19 @@ mod tests {
         ));
         assert!(scope_matches_service(
             "https://www.googleapis.com/auth/directory.readonly",
+            &services
+        ));
+    }
+
+    #[test]
+    fn scope_matches_service_meet_meetings() {
+        let services: HashSet<String> = ["meet"].iter().map(|s| s.to_string()).collect();
+        assert!(scope_matches_service(
+            "https://www.googleapis.com/auth/meetings.space.created",
+            &services
+        ));
+        assert!(scope_matches_service(
+            "https://www.googleapis.com/auth/meetings.space.readonly",
             &services
         ));
     }
