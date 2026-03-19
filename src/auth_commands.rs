@@ -539,18 +539,10 @@ async fn resolve_scopes(
 /// `https://www.googleapis.com/auth/`). A scope matches a service if its
 /// short name equals the service or starts with `service.` (e.g. service
 /// `drive` matches `drive`, `drive.readonly`, `drive.metadata.readonly`).
-///
-/// The `cloud-platform` scope always passes through since it's a
-/// cross-service platform scope.
 fn scope_matches_service(scope_url: &str, services: &HashSet<String>) -> bool {
     let short = scope_url
         .strip_prefix("https://www.googleapis.com/auth/")
         .unwrap_or(scope_url);
-
-    // cloud-platform is a cross-service scope, always include
-    if short == "cloud-platform" {
-        return true;
-    }
 
     let prefix = short.split('.').next().unwrap_or(short);
 
@@ -660,7 +652,7 @@ fn run_discovery_scope_picker(
     relevant_scopes: &[crate::setup::DiscoveredScope],
     services_filter: Option<&HashSet<String>>,
 ) -> Option<Vec<String>> {
-    use crate::setup::{ScopeClassification, PLATFORM_SCOPE};
+    use crate::setup::ScopeClassification;
     use crate::setup_tui::{PickerResult, SelectItem};
 
     let mut recommended_scopes = vec![];
@@ -830,11 +822,6 @@ fn run_discovery_scope_picker(
                         }
                     }
                 }
-            }
-
-            // Always include cloud-platform scope
-            if !selected.contains(&PLATFORM_SCOPE.to_string()) {
-                selected.push(PLATFORM_SCOPE.to_string());
             }
 
             // Hierarchical dedup: if we have both a broad scope (e.g. `.../auth/drive`)
@@ -1926,9 +1913,11 @@ mod tests {
     }
 
     #[test]
-    fn scope_matches_service_cloud_platform_always_matches() {
+    fn scope_matches_service_cloud_platform_not_injected() {
+        // cloud-platform should only appear when the user explicitly selects it,
+        // not be auto-included for unrelated services like "drive"
         let services: HashSet<String> = ["drive"].iter().map(|s| s.to_string()).collect();
-        assert!(scope_matches_service(
+        assert!(!scope_matches_service(
             "https://www.googleapis.com/auth/cloud-platform",
             &services
         ));
@@ -1990,9 +1979,7 @@ mod tests {
                 .strip_prefix("https://www.googleapis.com/auth/")
                 .unwrap_or(scope);
             assert!(
-                short.starts_with("drive")
-                    || short.starts_with("gmail")
-                    || short == "cloud-platform",
+                short.starts_with("drive") || short.starts_with("gmail"),
                 "Unexpected scope with service filter: {scope}"
             );
         }
@@ -2017,7 +2004,7 @@ mod tests {
                 .strip_prefix("https://www.googleapis.com/auth/")
                 .unwrap_or(scope);
             assert!(
-                short.starts_with("drive") || short == "cloud-platform",
+                short.starts_with("drive"),
                 "Unexpected scope with service + readonly filter: {scope}"
             );
         }
@@ -2033,7 +2020,7 @@ mod tests {
                 .strip_prefix("https://www.googleapis.com/auth/")
                 .unwrap_or(scope);
             assert!(
-                short.starts_with("gmail") || short == "cloud-platform",
+                short.starts_with("gmail"),
                 "Unexpected scope with service + full filter: {scope}"
             );
         }
