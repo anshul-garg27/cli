@@ -930,7 +930,7 @@ fn run_discovery_scope_picker(
     relevant_scopes: &[crate::setup::DiscoveredScope],
     services_filter: Option<&HashSet<String>>,
 ) -> Option<Vec<String>> {
-    use crate::setup::{ScopeClassification, PLATFORM_SCOPE};
+    use crate::setup::ScopeClassification;
     use crate::setup_tui::{PickerResult, SelectItem};
 
     let mut recommended_scopes = vec![];
@@ -1100,11 +1100,6 @@ fn run_discovery_scope_picker(
                         }
                     }
                 }
-            }
-
-            // Always include cloud-platform scope
-            if !selected.contains(&PLATFORM_SCOPE.to_string()) {
-                selected.push(PLATFORM_SCOPE.to_string());
             }
 
             // Hierarchical dedup: if we have both a broad scope (e.g. `.../auth/drive`)
